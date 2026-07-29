@@ -6,7 +6,7 @@ RUN npm ci
 COPY web/ ./
 RUN npm run build
 
-FROM python:3.11-slim-bookworm AS runtime
+FROM python:3.14-slim-bookworm AS runtime
 ARG APP_VERSION=0.5.1
 ARG VCS_REF=unknown
 LABEL org.opencontainers.image.title="Caption Studio" \
