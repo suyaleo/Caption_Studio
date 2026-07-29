@@ -1,6 +1,6 @@
 # Re-entry Checkpoint
 
-Last known public release baseline: Caption Studio v0.5.0.
+Last known public release baseline: Caption Studio v0.5.1.
 
 Read in order before changing behavior:
 

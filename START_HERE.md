@@ -2,6 +2,17 @@
 
 Caption Studio is a local-first subtitle editor and rendering application.
 
+## Isolated macOS installation
+
+```bash
+brew install uv ffmpeg-full
+uv tool install --python 3.11 \
+  "caption-studio[asr-macos] @ git+https://github.com/suyaleo/Caption_Studio.git@v0.5.1"
+caption-studio
+```
+
+`uv tool` keeps Caption Studio and MLX in a dedicated environment without changing the system Python.
+
 ## Development
 
 ```bash
@@ -23,9 +34,11 @@ The Docker service also listens on `http://127.0.0.1:8788` and stores working da
 ## Verification
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m unittest discover -s tests
+uv sync --locked --extra asr-macos
+uv run python -m unittest discover -s tests
 cd web && npm run typecheck && npm test && npm run build
-cd .. && python3 scripts/validate_studio_repo.py --mode release
+cd .. && uv run python scripts/validate_studio_repo.py --mode release
+bash scripts/test_uv_tool_install.sh
 ```
 
 See [README.md](./README.md) for product features, runtime providers and release instructions.

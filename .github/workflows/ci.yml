@@ -15,21 +15,20 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v7
 
-      - name: Set up Python
-        uses: actions/setup-python@v7
+      - name: Set up uv and Python
+        uses: astral-sh/setup-uv@v9.0.0
         with:
           python-version: "3.11"
-          cache: pip
-          cache-dependency-path: pyproject.toml
+          enable-cache: true
 
-      - name: Install application
-        run: pip install -e .
+      - name: Sync isolated Python environment
+        run: uv sync --locked
 
       - name: Validate Studio release contract
-        run: python scripts/validate_studio_repo.py --mode release
+        run: uv run python scripts/validate_studio_repo.py --mode release
 
       - name: Test Python application
-        run: PYTHONPATH=src python -m unittest discover -s tests
+        run: uv run python -m unittest discover -s tests
 
       - name: Set up Node
         uses: actions/setup-node@v7
@@ -50,7 +49,12 @@ jobs:
 
       - name: Build production Web
         working-directory: web
-        run: npm run build
+        run: |
+          npm run build
+          git diff --exit-code -- ../src/subtitle_automation/static
+
+      - name: Exercise isolated uv tool installation
+        run: bash scripts/test_uv_tool_install.sh
 
   docker:
     runs-on: ubuntu-latest
@@ -61,7 +65,7 @@ jobs:
       - name: Build Docker image
         run: |
           docker build \
-            --build-arg APP_VERSION=0.5.0 \
+            --build-arg APP_VERSION=0.5.1 \
             --build-arg VCS_REF="$GITHUB_SHA" \
             --tag caption-studio:ci .
 

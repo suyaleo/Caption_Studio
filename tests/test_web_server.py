@@ -6,10 +6,26 @@ from http.client import HTTPConnection
 from pathlib import Path
 
 from subtitle_automation.web_jobs import WebJobManager
-from subtitle_automation.web_server import CaptionStudioServer, _json_safe, _language_code
+from subtitle_automation.web_server import (
+    CaptionStudioServer,
+    _bundled_static_dir,
+    _default_workspace,
+    _json_safe,
+    _language_code,
+)
 
 
 class WebServerTests(unittest.TestCase):
+    def test_distribution_contains_the_web_application(self):
+        static_dir = _bundled_static_dir()
+        self.assertIsNotNone(static_dir)
+        self.assertTrue((static_dir / "index.html").is_file())
+
+    def test_default_workspace_is_user_scoped(self):
+        workspace = _default_workspace()
+        self.assertTrue(workspace.is_absolute())
+        self.assertIn(workspace.name, {"Caption Studio", "caption-studio"})
+
     def test_russian_language_code_is_supported(self):
         self.assertEqual(_language_code("ru-RU", default="auto"), "ru")
 
@@ -39,7 +55,7 @@ class WebServerTests(unittest.TestCase):
         self.assertIn("mlx_whisper", health)
         self.assertIn("asr", health)
         self.assertIn("translator", health)
-        self.assertEqual(health["version"], "0.5.0")
+        self.assertEqual(health["version"], "0.5.1")
         self.assertEqual(health["translator"]["base_url"], "http://127.0.0.1:8000/v1")
 
         payload = b"fake-video-evidence"
@@ -57,7 +73,7 @@ class WebServerTests(unittest.TestCase):
         payload = json.loads(response.read())
         self.assertEqual(response.status, 200)
         self.assertEqual(payload["repository"], "Caption_Studio")
-        self.assertEqual(payload["version"], "0.5.0")
+        self.assertEqual(payload["version"], "0.5.1")
         self.assertEqual(payload["license"], "Apache-2.0")
 
     def test_upload_rejects_unsupported_extension(self):

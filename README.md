@@ -24,6 +24,7 @@
 
 <p align="center">
   <a href="#docker로-바로-실행">Docker 실행</a> ·
+  <a href="#macos-격리-설치">macOS 설치</a> ·
   <a href="#macos-로컬-개발">macOS 개발</a> ·
   <a href="#기능">기능</a> ·
   <a href="#실행-구조">실행 구조</a> ·
@@ -80,6 +81,29 @@ CAPTION_TRANSLATION_BASE_URL=http://host.docker.internal:8000/v1 \
 docker compose up
 ```
 
+## macOS 격리 설치
+
+Caption Studio의 Python 패키지와 MLX 런타임은 `uv tool`이 전용 가상환경에 격리합니다. 시스템에는 FFmpeg와 실행 명령만 추가됩니다.
+
+```bash
+brew install uv ffmpeg-full
+uv tool install --python 3.11 \
+  "caption-studio[asr-macos] @ git+https://github.com/suyaleo/Caption_Studio.git@v0.5.1"
+caption-studio
+```
+
+브라우저에서 `http://127.0.0.1:8788`을 엽니다. React 화면은 Python 배포물에 포함되므로 Node.js나 별도의 소스 체크아웃은 필요하지 않습니다. 작업 파일은 기본적으로 `~/Library/Application Support/Caption Studio`에 보관됩니다.
+
+업데이트와 제거도 애플리케이션 환경만 대상으로 합니다. 새 버전은 설치 명령의 태그를 바꾸고 `--force`로 교체합니다.
+
+```bash
+uv tool install --force --python 3.11 \
+  "caption-studio[asr-macos] @ git+https://github.com/suyaleo/Caption_Studio.git@v0.5.1"
+uv tool uninstall caption-studio
+```
+
+설치 스크립트를 선호한다면 저장소의 `bash scripts/install_macos.sh`도 같은 절차를 수행합니다.
+
 ## macOS 로컬 개발
 
 Apple Silicon에서는 `mlx-whisper`를 사용하는 네이티브 개발 경로가 가장 빠릅니다.
@@ -92,7 +116,7 @@ cd web
 npm run dev
 ```
 
-개발 모드는 Vite(`8788`)와 Python 작업 API(`8790`)를 함께 실행합니다. 한 포트 프로덕션 빌드는 다음과 같습니다.
+`bootstrap_macos.sh`는 저장소의 `uv.lock`에 맞춰 프로젝트 전용 `.venv`를 생성하며 시스템 Python에는 패키지를 설치하지 않습니다. 개발 모드는 Vite(`8788`)와 Python 작업 API(`8790`)를 함께 실행합니다. 한 포트 프로덕션 빌드는 다음과 같습니다.
 
 ```bash
 cd web
@@ -140,7 +164,8 @@ Browser :8788
 ## 검증
 
 ```bash
-PYTHONPATH=src .venv/bin/python -m unittest discover -s tests
+uv sync --locked --extra asr-macos
+uv run python -m unittest discover -s tests
 
 cd web
 npm run typecheck
@@ -148,19 +173,20 @@ npm test
 npm run build
 
 cd ..
-python3 scripts/validate_studio_repo.py --mode release
+uv run python scripts/validate_studio_repo.py --mode release
+bash scripts/test_uv_tool_install.sh
 docker build -t caption-studio:smoke .
 bash scripts/docker_smoke_test.sh caption-studio:smoke
 ```
 
-Docker smoke test는 컨테이너 상태, 비루트 런타임, 영속 업로드, 재시작 후 FFmpeg 하드서브 렌더와 결과 다운로드까지 확인합니다.
+uv tool smoke test는 wheel 안의 React 화면과 격리된 실행 명령을 확인합니다. Docker smoke test는 컨테이너 상태, 비루트 런타임, 영속 업로드, 재시작 후 FFmpeg 하드서브 렌더와 결과 다운로드까지 확인합니다.
 
 ## 릴리스
 
-`studio.json`, Python, Web과 Git 태그는 같은 SemVer를 사용합니다. `v0.5.0` 형태의 검증된 태그가 푸시되면 GitHub Actions가 다음을 게시합니다.
+`studio.json`, Python, Web과 Git 태그는 같은 SemVer를 사용합니다. `v0.5.1` 형태의 검증된 태그가 푸시되면 GitHub Actions가 다음을 게시합니다.
 
 - GitHub Release
-- `ghcr.io/suyaleo/caption-studio:0.5.0`
+- `ghcr.io/suyaleo/caption-studio:0.5.1`
 - `ghcr.io/suyaleo/caption-studio:sha-<commit>`
 - 안정 릴리스의 `latest`
 - 빌드 provenance와 SBOM
