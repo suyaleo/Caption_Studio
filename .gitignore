@@ -8,6 +8,8 @@ __pycache__/
 .ruff_cache/
 .venv/
 venv/
+build/
+dist/
 tmp/
 
 # Generated subtitle, media, ASR, and verification artifacts.

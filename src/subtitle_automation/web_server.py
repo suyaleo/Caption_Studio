@@ -216,9 +216,10 @@ class CaptionStudioHandler(BaseHTTPRequestHandler):
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="caption-studio-api")
+    parser = argparse.ArgumentParser(prog="caption-studio")
+    parser.add_argument("--version", action="version", version=f"Caption Studio {__version__}")
     parser.add_argument("--host", default=os.getenv("CAPTION_STUDIO_HOST", "127.0.0.1"))
-    parser.add_argument("--port", default=int(os.getenv("CAPTION_STUDIO_PORT", "8790")), type=int)
+    parser.add_argument("--port", default=int(os.getenv("CAPTION_STUDIO_PORT", "8788")), type=int)
     parser.add_argument("--workspace", type=Path)
     parser.add_argument("--static-dir", type=Path)
     return parser
@@ -226,9 +227,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    repository_root = Path(__file__).resolve().parents[2]
-    workspace = args.workspace or Path(os.getenv("CAPTION_STUDIO_WORKSPACE", repository_root / "output" / "web_jobs"))
-    static_dir = args.static_dir or (Path(value) if (value := os.getenv("CAPTION_STUDIO_STATIC_DIR")) else None)
+    workspace = args.workspace or Path(os.getenv("CAPTION_STUDIO_WORKSPACE", _default_workspace()))
+    static_dir = args.static_dir or (
+        Path(value) if (value := os.getenv("CAPTION_STUDIO_STATIC_DIR")) else _bundled_static_dir()
+    )
     manager = WebJobManager(workspace)
     server = CaptionStudioServer((args.host, args.port), manager, static_dir=static_dir)
     print(f"Caption Studio API: http://{args.host}:{server.server_port}")
@@ -241,6 +243,20 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         server.server_close()
     return 0
+
+
+def _bundled_static_dir() -> Path | None:
+    directory = Path(__file__).with_name("static")
+    return directory if (directory / "index.html").is_file() else None
+
+
+def _default_workspace() -> Path:
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "Caption Studio"
+    if os.name == "nt" and (app_data := os.getenv("APPDATA")):
+        return Path(app_data) / "Caption Studio"
+    data_home = Path(os.getenv("XDG_DATA_HOME", Path.home() / ".local" / "share"))
+    return data_home / "caption-studio"
 
 
 def _ascii_filename(value: str) -> str:

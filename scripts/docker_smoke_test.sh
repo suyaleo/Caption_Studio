@@ -2,6 +2,7 @@
 set -euo pipefail
 
 IMAGE_NAME="${1:-caption-studio:smoke}"
+EXPECTED_VERSION="$(python3 -c 'import json; print(json.load(open("studio.json"))["version"])')"
 CONTAINER_NAME="caption-studio-smoke"
 VOLUME_NAME="caption-studio-smoke-data"
 HOST_PORT="${CAPTION_STUDIO_SMOKE_PORT:-18788}"
@@ -30,7 +31,8 @@ for _attempt in $(seq 1 60); do
 done
 
 python3 -c 'import json,sys; p=json.load(open(sys.argv[1])); assert p["ok"], p' "$TEMP_DIR/health.json"
-curl --fail --silent "http://127.0.0.1:${HOST_PORT}/api/version" | python3 -c 'import json,sys; p=json.load(sys.stdin); assert p["version"] == "0.5.0" and p["license"] == "Apache-2.0"'
+curl --fail --silent "http://127.0.0.1:${HOST_PORT}/api/version" \
+  | python3 -c 'import json,sys; p=json.load(sys.stdin); assert p["version"] == sys.argv[1] and p["license"] == "Apache-2.0"' "$EXPECTED_VERSION"
 
 docker exec "$CONTAINER_NAME" ffmpeg -hide_banner -loglevel error -y \
   -f lavfi -i "color=c=0x17202a:s=640x360:d=2:r=24" \

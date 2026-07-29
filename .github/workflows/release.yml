@@ -30,16 +30,17 @@ jobs:
           test "$TAG_VERSION" = "$MANIFEST_VERSION"
           echo "value=$TAG_VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Set up Python
-        uses: actions/setup-python@v7
+      - name: Set up uv and Python
+        uses: astral-sh/setup-uv@v9
         with:
           python-version: "3.11"
+          enable-cache: true
 
       - name: Install and test Python application
         run: |
-          pip install -e .
-          python scripts/validate_studio_repo.py --mode release
-          PYTHONPATH=src python -m unittest discover -s tests
+          uv sync --locked
+          uv run python scripts/validate_studio_repo.py --mode release
+          uv run python -m unittest discover -s tests
 
       - name: Set up Node
         uses: actions/setup-node@v7
@@ -55,6 +56,10 @@ jobs:
           npm run typecheck
           npm test
           npm run build
+          git diff --exit-code -- ../src/subtitle_automation/static
+
+      - name: Exercise isolated uv tool installation
+        run: bash scripts/test_uv_tool_install.sh
 
   publish:
     needs: verify

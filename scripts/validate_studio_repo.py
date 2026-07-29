@@ -37,6 +37,7 @@ BASE_FILES = (
 RELEASE_FILES = BASE_FILES + (
     "Dockerfile",
     "compose.yaml",
+    "uv.lock",
     ".github/workflows/ci.yml",
     ".github/workflows/release.yml",
 )
@@ -147,6 +148,9 @@ def validate_version_alignment(root: Path, manifest: dict[str, Any], errors: lis
         web_package = json.loads(web_package_path.read_text(encoding="utf-8"))
         if web_package.get("version") != version:
             errors.append(f"web/package.json version must equal studio.json version ({version}).")
+    bundled_web = root / "src" / "subtitle_automation" / "static" / "index.html"
+    if not bundled_web.is_file():
+        errors.append("The Python distribution must contain the built Web application.")
 
 
 def tracked_files(root: Path) -> list[Path]:
