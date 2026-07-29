@@ -1,0 +1,16 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+.venv
+venv
+**/__pycache__
+**/.pytest_cache
+web/node_modules
+web/dist
+output
+tmp
+*.log
+.DS_Store
+docs

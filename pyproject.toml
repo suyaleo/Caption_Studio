@@ -1,0 +1,24 @@
+[project]
+name = "caption-studio"
+version = "0.5.0"
+description = "Local-first subtitle editor, transcription, translation and hard-sub video renderer."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+asr = ["mlx-whisper>=0.4.3"]
+asr-macos = ["mlx-whisper>=0.4.3"]
+asr-docker = ["faster-whisper>=1.2,<2"]
+
+[project.scripts]
+subtitle-automation = "subtitle_automation.cli:main"
+caption-studio-api = "subtitle_automation.web_server:main"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]

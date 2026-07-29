@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://leostudio.local/schemas/studio.schema.json",
+  "title": "Leo Studio Application Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "displayName",
+    "repository",
+    "slug",
+    "version",
+    "license",
+    "container",
+    "defaultPort",
+    "healthEndpoint",
+    "dataDirectory",
+    "aiProfile"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "displayName": { "type": "string", "pattern": "^[A-Z][A-Za-z0-9 ]* Studio$" },
+    "repository": {
+      "type": "string",
+      "pattern": "^(?:[A-Z][A-Za-z0-9]*_Studio|Studio_App_Template)$"
+    },
+    "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+    "version": {
+      "type": "string",
+      "pattern": "^(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"
+    },
+    "license": { "const": "Apache-2.0" },
+    "container": {
+      "type": "string",
+      "pattern": "^ghcr\\.io/[a-z0-9][a-z0-9._-]*/[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "defaultPort": { "type": "integer", "minimum": 1, "maximum": 65535 },
+    "healthEndpoint": { "type": "string", "pattern": "^/" },
+    "dataDirectory": { "type": "string", "pattern": "^/[A-Za-z0-9._/-]+$" },
+    "aiProfile": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" }
+  }
+}
