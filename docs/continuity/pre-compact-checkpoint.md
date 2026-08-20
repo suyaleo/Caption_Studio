@@ -1,6 +1,6 @@
 # Re-entry Checkpoint
 
-Last known public release baseline: Caption Studio v0.5.1. The active uncommitted branch `codex/cat-artifact-bridge-v1` adds the isolated CAT companion endpoint documented in `active-work.md`; it is not a published release claim.
+Last known public release baseline: Caption Studio v0.5.1. The pushed branch `codex/cat-artifact-bridge-v1` at `002156a` adds the isolated CAT companion endpoint documented in `active-work.md`; it is not a published release claim.
 
 Read in order before changing behavior:
 

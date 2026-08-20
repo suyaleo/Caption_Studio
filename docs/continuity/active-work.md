@@ -8,7 +8,7 @@ Caption Studio v0.5.1 unifies the existing React editor and Python media pipelin
 
 The public release contract includes Apache-2.0 licensing, runtime data isolation, Docker health checks, persistent storage, CI, GHCR publication and a clean public Git history.
 
-An uncommitted integration slice on `codex/cat-artifact-bridge-v1` adds CAT Artifact Bridge v1 beside the existing server:
+The pushed integration checkpoint `002156a` on `codex/cat-artifact-bridge-v1` adds CAT Artifact Bridge v1 beside the existing server:
 
 - `GET /cat/v1/health`, `POST /cat/v1/artifacts`, and same-origin VTT download;
 - persistent intent/output/receipt with idempotent retry, restart reuse, conflict detection, and tamper rejection;
