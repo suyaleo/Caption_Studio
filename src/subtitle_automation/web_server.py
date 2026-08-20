@@ -14,6 +14,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
 from . import __version__
+from .cat_bridge import BridgeConflict, CatArtifactBridge
 from .web_jobs import WebJobManager
 
 
@@ -33,6 +34,7 @@ class CaptionStudioServer(ThreadingHTTPServer):
     ) -> None:
         super().__init__(server_address, CaptionStudioHandler)
         self.manager = manager
+        self.cat_bridge = CatArtifactBridge(manager.root)
         self.static_dir = static_dir.resolve() if static_dir else None
         self.max_upload_bytes = int(os.getenv("CAPTION_STUDIO_MAX_UPLOAD_BYTES", DEFAULT_MAX_UPLOAD_BYTES))
 
@@ -47,7 +49,7 @@ class CaptionStudioHandler(BaseHTTPRequestHandler):
 
     def do_HEAD(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
-        if parsed.path == "/api/health":
+        if parsed.path in {"/api/health", "/cat/v1/health"}:
             self.send_response(HTTPStatus.OK)
             self._cors_headers()
             self.send_header("Content-Type", "application/json; charset=utf-8")
@@ -65,6 +67,9 @@ class CaptionStudioHandler(BaseHTTPRequestHandler):
         try:
             if parsed.path == "/api/health":
                 self._json(HTTPStatus.OK, {**self.server.manager.health(), "version": __version__})
+                return
+            if parsed.path == "/cat/v1/health":
+                self._json(HTTPStatus.OK, self.server.cat_bridge.health())
                 return
             if parsed.path == "/api/version":
                 self._json(
@@ -85,6 +90,10 @@ class CaptionStudioHandler(BaseHTTPRequestHandler):
             if len(parts) == 4 and parts[:2] == ["api", "jobs"] and parts[3] == "download":
                 path, filename = self.server.manager.download_path(parts[2])
                 self._file(path, filename, "video/mp4")
+                return
+            if len(parts) == 4 and parts[:3] == ["cat", "v1", "outputs"]:
+                path = self.server.cat_bridge.output_path(parts[3])
+                self._file(path, parts[3], "text/vtt; charset=utf-8")
                 return
             if self.server.static_dir:
                 self._static(parsed.path)
@@ -131,9 +140,15 @@ class CaptionStudioHandler(BaseHTTPRequestHandler):
                 )
                 self._json(HTTPStatus.ACCEPTED, job)
                 return
+            if parsed.path == "/cat/v1/artifacts":
+                result = self.server.cat_bridge.execute(self._json_body())
+                self._json(HTTPStatus.OK, result)
+                return
             self._json(HTTPStatus.NOT_FOUND, {"error": "요청한 API가 없습니다."})
         except KeyError:
             self._json(HTTPStatus.NOT_FOUND, {"error": "업로드된 영상을 찾을 수 없습니다."})
+        except BridgeConflict as exc:
+            self._json(HTTPStatus.CONFLICT, {"error": str(exc)})
         except ValueError as exc:
             self._json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
         except Exception as exc:  # pragma: no cover - defensive server boundary.
