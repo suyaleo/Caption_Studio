@@ -41,6 +41,7 @@
 - 폰트, 크기, 색상, 외곽선, 배경, 정렬과 화면 위치 조정
 - macOS Apple Silicon의 `mlx-whisper` 자동 자막
 - Docker/Linux CPU의 `faster-whisper` 자동 자막
+- CAT Artifact Bridge의 명시적 `prompt-caption-v1`·`asr-v1`, 입력 hash 검증과 부분 결과 복구
 - 원본 언어 자동 감지와 OpenAI-compatible 로컬 모델 번역
 - 한국어·영어·일본어·중국어·스페인어·프랑스어·독일어·러시아어
 - ASS 스타일 보존과 FFmpeg 하드서브 MP4 렌더링
@@ -145,11 +146,13 @@ Browser :8788
 | `POST /api/jobs/transcribe` | 자동 자막·선택적 번역 작업 |
 | `POST /api/jobs/render` | 편집 스타일을 적용한 MP4 출력 |
 | `GET /api/jobs/{id}` | 진행률·오류·결과 조회 |
-| `GET /cat/v1/health` | Creative Automation Tool용 CAT Artifact Bridge v1 상태·계약 |
-| `POST /cat/v1/artifacts` | 멱등 CaptionTrack VTT 생성 및 결과 영수증 |
+| `GET /cat/v1/health` | CAT Artifact Bridge v1 mode·ASR Provider·복구 상태 |
+| `POST /cat/v1/artifacts` | 멱등 prompt/ASR CaptionTrack VTT 생성 및 결과 영수증 |
 | `GET /cat/v1/outputs/{id}.vtt` | 해시가 선언된 Bridge 결과 다운로드 |
 
-CAT Artifact Bridge는 Caption Studio 작업 폴더의 별도 저장 영역에 intent, VTT, receipt를 기록합니다. 동일 idempotency key와 동일 요청은 같은 결과를 반환하며, 다른 요청으로 key를 재사용하거나 기존 결과가 변조된 경우 거부합니다. Creative Automation Tool은 이 결과를 다시 SHA-256 검증한 뒤 자체 Artifact Store로 복사해야 합니다. 현재 `prompt-caption-v1` 모드는 요청의 `prompt`, `parameters.startMs`, `parameters.endMs`를 단일 VTT cue로 만들며, 오디오 ASR 경로와 명확히 구분됩니다.
+CAT Artifact Bridge는 Caption Studio 작업 폴더의 별도 저장 영역에 intent, provider evidence, VTT, receipt를 기록합니다. 동일 idempotency key와 동일 요청은 같은 결과를 반환하며, 다른 요청으로 key를 재사용하거나 기존 결과가 변조된 경우 거부합니다. Creative Automation Tool은 이 결과를 다시 SHA-256 검증한 뒤 자체 Artifact Store로 복사해야 합니다.
+
+`prompt-caption-v1`은 요청의 Scene script와 time window를 결정적 VTT로 만드는 계약 proof입니다. `asr-v1`은 현재 승인된 제품 소유 VoiceTrack과 exact `inputContentHash`, provider, model, language, device, compute type, word timestamp 선택을 요구합니다. 입력 hash는 provider 실행 전에 검증하고, segment partial/complete evidence를 atomic checkpoint로 남겨 재시작 시 마지막 segment 이후부터 이어갑니다. 두 mode와 Provider는 서로 암묵적으로 fallback하지 않습니다. 자세한 요청·복구 계약은 [`docs/integrations/CAT_ARTIFACT_BRIDGE.md`](./docs/integrations/CAT_ARTIFACT_BRIDGE.md)를 참조하세요.
 
 ## 환경 설정
 

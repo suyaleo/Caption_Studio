@@ -7,6 +7,7 @@ import json
 import math
 import os
 import subprocess
+from collections.abc import Callable
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -45,10 +46,10 @@ def faster_whisper_model_name(asr_model: str) -> str:
     return asr_model
 
 
-def asr_provider_status() -> dict[str, Any]:
+def asr_provider_status(configured_provider: str | None = None) -> dict[str, Any]:
     """Describe the selected cross-platform ASR runtime without loading a model."""
 
-    configured = os.getenv("CAPTION_ASR_PROVIDER", "auto").strip().lower()
+    configured = (configured_provider or os.getenv("CAPTION_ASR_PROVIDER", "auto")).strip().lower()
     installed = {
         "mlx-whisper": importlib.util.find_spec("mlx_whisper") is not None,
         "faster-whisper": importlib.util.find_spec("faster_whisper") is not None,
@@ -206,23 +207,67 @@ def extract_audio(media_path: Path, audio_output: Path) -> Path:
     return audio_output
 
 
-def transcribe_audio(audio_path: Path, asr_model: str, *, language: str | None = None) -> dict[str, Any]:
+def transcribe_audio(
+    audio_path: Path,
+    asr_model: str,
+    *,
+    language: str | None = None,
+    provider: str | None = None,
+    device: str | None = None,
+    compute_type: str | None = None,
+    word_timestamps: bool = False,
+    clip_timestamps: str | list[float] = "0",
+    on_segment: Callable[[dict[str, Any]], None] | None = None,
+) -> dict[str, Any]:
     """Run the configured macOS or Docker ASR provider."""
 
     asr_model = normalize_asr_model(asr_model)
-    status = asr_provider_status()
-    provider = status["provider"]
-    if provider == "mlx-whisper":
-        result = _transcribe_with_mlx(audio_path, asr_model, language=language)
-    elif provider == "faster-whisper":
-        result = _transcribe_with_faster_whisper(audio_path, asr_model, language=language)
+    status = asr_provider_status(provider)
+    selected_provider = status["provider"]
+    selected_device = device or os.getenv("CAPTION_ASR_DEVICE", "cpu")
+    selected_compute_type = compute_type or os.getenv("CAPTION_ASR_COMPUTE_TYPE", "int8")
+    if selected_provider == "mlx-whisper":
+        if device not in {None, "auto", "mlx"}:
+            raise ValueError("mlx-whisper device must be auto or mlx")
+        result = _transcribe_with_mlx(
+            audio_path,
+            asr_model,
+            language=language,
+            word_timestamps=word_timestamps,
+            clip_timestamps=clip_timestamps,
+        )
+        if on_segment:
+            for segment in result.get("segments") or []:
+                if isinstance(segment, dict):
+                    on_segment(dict(segment))
+    elif selected_provider == "faster-whisper":
+        result = _transcribe_with_faster_whisper(
+            audio_path,
+            asr_model,
+            language=language,
+            device=selected_device,
+            compute_type=selected_compute_type,
+            word_timestamps=word_timestamps,
+            clip_timestamps=clip_timestamps,
+            on_segment=on_segment,
+        )
     else:
         raise RuntimeError(str(status["error"]))
-    result.setdefault("_provider", provider)
+    result.setdefault("_provider", selected_provider)
+    result.setdefault("_device", "mlx" if selected_provider == "mlx-whisper" else selected_device)
+    result.setdefault("_compute_type", "mlx-native" if selected_provider == "mlx-whisper" else selected_compute_type)
+    result.setdefault("_word_timestamps", word_timestamps)
     return result
 
 
-def _transcribe_with_mlx(audio_path: Path, asr_model: str, *, language: str | None) -> dict[str, Any]:
+def _transcribe_with_mlx(
+    audio_path: Path,
+    asr_model: str,
+    *,
+    language: str | None,
+    word_timestamps: bool,
+    clip_timestamps: str | list[float],
+) -> dict[str, Any]:
     """Run Apple Silicon native mlx-whisper."""
 
     try:
@@ -231,22 +276,43 @@ def _transcribe_with_mlx(audio_path: Path, asr_model: str, *, language: str | No
         raise RuntimeError("mlx-whisper is required unless --asr-json is provided") from exc
 
     try:
-        result = mlx_whisper.transcribe(str(audio_path), path_or_hf_repo=asr_model, language=language)
+        result = mlx_whisper.transcribe(
+            str(audio_path),
+            path_or_hf_repo=asr_model,
+            language=language,
+            word_timestamps=word_timestamps,
+            clip_timestamps=clip_timestamps,
+        )
     except TypeError:
-        result = mlx_whisper.transcribe(str(audio_path), asr_model, language=language)
+        result = mlx_whisper.transcribe(
+            str(audio_path),
+            path_or_hf_repo=asr_model,
+            language=language,
+            word_timestamps=word_timestamps,
+        )
     if not isinstance(result, dict):
         raise RuntimeError("mlx-whisper returned an unsupported transcript payload")
     return result
 
 
-def _transcribe_with_faster_whisper(audio_path: Path, asr_model: str, *, language: str | None) -> dict[str, Any]:
+def _transcribe_with_faster_whisper(
+    audio_path: Path,
+    asr_model: str,
+    *,
+    language: str | None,
+    device: str,
+    compute_type: str,
+    word_timestamps: bool,
+    clip_timestamps: str | list[float],
+    on_segment: Callable[[dict[str, Any]], None] | None,
+) -> dict[str, Any]:
     """Run the Linux/Docker CPU provider and normalize its result to Whisper JSON."""
 
     model_name = faster_whisper_model_name(asr_model)
     model = _faster_whisper_model(
         model_name,
-        os.getenv("CAPTION_ASR_DEVICE", "cpu"),
-        os.getenv("CAPTION_ASR_COMPUTE_TYPE", "int8"),
+        device,
+        compute_type,
         os.getenv("CAPTION_ASR_DOWNLOAD_ROOT") or None,
     )
     segments, info = model.transcribe(
@@ -254,9 +320,12 @@ def _transcribe_with_faster_whisper(audio_path: Path, asr_model: str, *, languag
         language=language,
         vad_filter=True,
         beam_size=max(1, int(os.getenv("CAPTION_ASR_BEAM_SIZE", "5"))),
+        word_timestamps=word_timestamps,
+        clip_timestamps=clip_timestamps,
     )
-    normalized_segments = [
-        {
+    normalized_segments = []
+    for index, segment in enumerate(segments):
+        normalized = {
             "id": index,
             "start": float(segment.start),
             "end": float(segment.end),
@@ -264,8 +333,20 @@ def _transcribe_with_faster_whisper(audio_path: Path, asr_model: str, *, languag
             "avg_logprob": float(getattr(segment, "avg_logprob", -10.0)),
             "no_speech_prob": float(getattr(segment, "no_speech_prob", 0.0)),
         }
-        for index, segment in enumerate(segments)
-    ]
+        words = getattr(segment, "words", None)
+        if word_timestamps and words:
+            normalized["words"] = [
+                {
+                    "start": float(word.start),
+                    "end": float(word.end),
+                    "word": str(word.word),
+                    "probability": float(getattr(word, "probability", 0.0)),
+                }
+                for word in words
+            ]
+        normalized_segments.append(normalized)
+        if on_segment:
+            on_segment(dict(normalized))
     return {
         "text": "".join(segment["text"] for segment in normalized_segments).strip(),
         "segments": normalized_segments,

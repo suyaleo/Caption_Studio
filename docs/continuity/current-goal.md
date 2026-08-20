@@ -9,3 +9,4 @@ Required properties:
 - optional translation outages do not disable editing, transcription or rendering;
 - working media and model caches remain outside Git;
 - every public release passes Python, Web, Docker and manifest validation.
+- CAT Artifact Bridge modes remain isolated from the editor authority, hash-verified, explicitly provider-selected, idempotent, and restart-recoverable.

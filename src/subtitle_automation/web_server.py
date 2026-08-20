@@ -31,10 +31,11 @@ class CaptionStudioServer(ThreadingHTTPServer):
         manager: WebJobManager,
         *,
         static_dir: Path | None = None,
+        cat_bridge: CatArtifactBridge | None = None,
     ) -> None:
         super().__init__(server_address, CaptionStudioHandler)
         self.manager = manager
-        self.cat_bridge = CatArtifactBridge(manager.root)
+        self.cat_bridge = cat_bridge or CatArtifactBridge(manager.root)
         self.static_dir = static_dir.resolve() if static_dir else None
         self.max_upload_bytes = int(os.getenv("CAPTION_STUDIO_MAX_UPLOAD_BYTES", DEFAULT_MAX_UPLOAD_BYTES))
 
