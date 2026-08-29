@@ -23,6 +23,14 @@ export interface BackendHealth {
   workspace: string;
 }
 
+export interface ProviderAuthStatus {
+  available: boolean;
+  provider: "grok" | "codex";
+  model: string;
+  error?: string | null;
+  login?: { provider: string; state: "waiting" | "completed" | "failed"; instructions: string } | null;
+}
+
 export interface ProductionJob {
   job_id: string;
   kind: "transcribe" | "render";
@@ -57,6 +65,7 @@ export interface TranscriptionOptions {
   sourceLanguage: string;
   translate: boolean;
   targetLanguage: string;
+  translationProvider: "grok" | "codex";
 }
 
 export async function getBackendHealth(): Promise<BackendHealth> {
@@ -98,6 +107,7 @@ export async function createTranscriptionJob(
       source_language: options.sourceLanguage,
       translate: options.translate,
       target_language: options.targetLanguage,
+      translation_provider: options.translationProvider,
     }),
   });
 }
@@ -124,6 +134,14 @@ export async function waitForJob(
     if (job.status === "error") throw new Error(job.error ?? "작업을 완료하지 못했습니다.");
     await new Promise((resolve) => window.setTimeout(resolve, 700));
   }
+}
+
+export function getProviderAuthStatus(provider: "grok" | "codex"): Promise<ProviderAuthStatus> {
+  return requestJson<ProviderAuthStatus>(`/api/auth/${provider}/status`);
+}
+
+export function startProviderDeviceLogin(provider: "grok" | "codex"): Promise<ProviderAuthStatus["login"]> {
+  return requestJson<ProviderAuthStatus["login"]>(`/api/auth/${provider}/device/start`, { method: "POST" });
 }
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {

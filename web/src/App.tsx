@@ -228,12 +228,16 @@ export function App() {
         asrModel={production.asrModel}
         sourceLanguage={production.sourceLanguage}
         translationEnabled={production.translationEnabled}
+        translationProvider={production.translationProvider}
+        providerAuth={production.providerAuth}
         targetLanguage={production.targetLanguage}
         onClose={() => production.setOpen(false)}
         onMode={production.setMode}
         onModel={production.setAsrModel}
         onSourceLanguage={production.setSourceLanguage}
         onTranslationEnabled={production.setTranslationEnabled}
+        onTranslationProvider={production.setTranslationProvider}
+        onStartProviderLogin={() => { void production.startProviderLogin(); }}
         onTargetLanguage={production.setTargetLanguage}
         onRefreshHealth={() => void production.refreshHealth()}
         onTranscribe={() => {

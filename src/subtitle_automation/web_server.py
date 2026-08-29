@@ -79,6 +79,9 @@ class CaptionStudioHandler(BaseHTTPRequestHandler):
                 )
                 return
             parts = [unquote(part) for part in parsed.path.split("/") if part]
+            if len(parts) == 4 and parts[:2] == ["api", "auth"] and parts[3] == "status":
+                self._json(HTTPStatus.OK, self.server.manager.oauth_status(parts[2]))
+                return
             if len(parts) == 3 and parts[:2] == ["api", "jobs"]:
                 self._json(HTTPStatus.OK, self.server.manager.get_job(parts[2]))
                 return
@@ -100,6 +103,10 @@ class CaptionStudioHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
         try:
+            parts = [unquote(part) for part in parsed.path.split("/") if part]
+            if len(parts) == 5 and parts[:2] == ["api", "auth"] and parts[3:] == ["device", "start"]:
+                self._json(HTTPStatus.ACCEPTED, self.server.manager.start_oauth_login(parts[2]))
+                return
             if parsed.path == "/api/media":
                 query = parse_qs(parsed.query)
                 filename = (query.get("filename") or [""])[0]
@@ -115,6 +122,7 @@ class CaptionStudioHandler(BaseHTTPRequestHandler):
                     source_language=_language_code(payload.get("source_language"), default="auto"),
                     translate=bool(payload.get("translate", False)),
                     target_language=_language_code(payload.get("target_language"), default="ko"),
+                    translation_provider=str(payload.get("translation_provider") or "none").lower(),
                 )
                 self._json(HTTPStatus.ACCEPTED, job)
                 return

@@ -4,8 +4,11 @@ import {
   createRenderJob,
   createTranscriptionJob,
   getBackendHealth,
+  getProviderAuthStatus,
+  startProviderDeviceLogin,
   type BackendHealth,
   type ProductionJob,
+  type ProviderAuthStatus,
   uploadMedia,
   waitForJob,
 } from "./api";
@@ -28,6 +31,8 @@ export function useProductionJobs({ onCaptions, onNotice }: ProductionJobsOption
   const [asrModel, setAsrModel] = useState("mlx-community/whisper-small-mlx");
   const [sourceLanguage, setSourceLanguage] = useState("auto");
   const [translationEnabled, setTranslationEnabled] = useState(false);
+  const [translationProvider, setTranslationProvider] = useState<"grok" | "codex">("grok");
+  const [providerAuth, setProviderAuth] = useState<ProviderAuthStatus | null>(null);
   const [targetLanguage, setTargetLanguage] = useState("ko");
   const uploadedRef = useRef<{ file: File; mediaId: string } | null>(null);
   const callbacksRef = useRef({ onCaptions, onNotice });
@@ -50,6 +55,24 @@ export function useProductionJobs({ onCaptions, onNotice }: ProductionJobsOption
   useEffect(() => {
     void refreshHealth();
   }, [refreshHealth]);
+
+  const refreshProviderAuth = useCallback(async (provider: "grok" | "codex" = translationProvider) => {
+    try {
+      setProviderAuth(await getProviderAuthStatus(provider));
+    } catch {
+      setProviderAuth(null);
+    }
+  }, [translationProvider]);
+
+  useEffect(() => {
+    void refreshProviderAuth();
+  }, [refreshProviderAuth]);
+
+  const startProviderLogin = useCallback(async () => {
+    await startProviderDeviceLogin(translationProvider);
+    await new Promise((resolve) => window.setTimeout(resolve, 700));
+    await refreshProviderAuth(translationProvider);
+  }, [refreshProviderAuth, translationProvider]);
 
   const show = useCallback((nextMode: ProductionMode) => {
     setMode(nextMode);
@@ -85,6 +108,7 @@ export function useProductionJobs({ onCaptions, onNotice }: ProductionJobsOption
         sourceLanguage,
         translate: translationEnabled,
         targetLanguage,
+        translationProvider,
       });
       setJob(created);
       const complete = await waitForJob(created.job_id, setJob);
@@ -114,7 +138,7 @@ export function useProductionJobs({ onCaptions, onNotice }: ProductionJobsOption
         error: error instanceof Error ? error.message : "자동 자막을 생성하지 못했습니다.",
       }));
     }
-  }, [asrModel, ensureUploaded, sourceLanguage, targetLanguage, translationEnabled]);
+  }, [asrModel, ensureUploaded, sourceLanguage, targetLanguage, translationEnabled, translationProvider]);
 
   const render = useCallback(async (
     file: File,
@@ -164,6 +188,11 @@ export function useProductionJobs({ onCaptions, onNotice }: ProductionJobsOption
     setSourceLanguage,
     translationEnabled,
     setTranslationEnabled,
+    translationProvider,
+    setTranslationProvider,
+    providerAuth,
+    refreshProviderAuth,
+    startProviderLogin,
     targetLanguage,
     setTargetLanguage,
     resetMedia,

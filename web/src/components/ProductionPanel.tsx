@@ -9,7 +9,7 @@ import {
   X,
 } from "lucide-react";
 import type { ProductionMode } from "../features/production/useProductionJobs";
-import type { BackendHealth, ProductionJob } from "../features/production/api";
+import type { BackendHealth, ProductionJob, ProviderAuthStatus } from "../features/production/api";
 
 interface ProductionPanelProps {
   open: boolean;
@@ -24,12 +24,16 @@ interface ProductionPanelProps {
   asrModel: string;
   sourceLanguage: string;
   translationEnabled: boolean;
+  translationProvider: "grok" | "codex";
+  providerAuth: ProviderAuthStatus | null;
   targetLanguage: string;
   onClose: () => void;
   onMode: (mode: ProductionMode) => void;
   onModel: (model: string) => void;
   onSourceLanguage: (language: string) => void;
   onTranslationEnabled: (enabled: boolean) => void;
+  onTranslationProvider: (provider: "grok" | "codex") => void;
+  onStartProviderLogin: () => void;
   onTargetLanguage: (language: string) => void;
   onRefreshHealth: () => void;
   onTranscribe: () => void;
@@ -49,12 +53,16 @@ export function ProductionPanel({
   asrModel,
   sourceLanguage,
   translationEnabled,
+  translationProvider,
+  providerAuth,
   targetLanguage,
   onClose,
   onMode,
   onModel,
   onSourceLanguage,
   onTranslationEnabled,
+  onTranslationProvider,
+  onStartProviderLogin,
   onTargetLanguage,
   onRefreshHealth,
   onTranscribe,
@@ -64,7 +72,7 @@ export function ProductionPanel({
   const active = uploading || job?.status === "queued" || job?.status === "running";
   const progress = uploading ? Math.round(uploadProgress * 0.18) : job?.progress ?? 0;
   const qaFlags = job?.result?.qa?.flags ?? [];
-  const translatorReady = Boolean(health?.translator?.available);
+  const translatorReady = Boolean(providerAuth?.available);
   const asrReady = Boolean(health?.asr?.available ?? health?.mlx_whisper);
   const asrProvider = health?.asr?.provider === "faster-whisper" ? "faster-whisper · Docker" : "mlx-whisper · macOS";
   const canRun = mode === "transcribe"
@@ -98,9 +106,9 @@ export function ProductionPanel({
             <RuntimeRow label="음성 인식" ready={asrReady} detail={asrReady ? `${asrProvider} 준비됨` : "Whisper 실행 환경 필요"} />
             <RuntimeRow label="영상 출력" ready={Boolean(health?.ffmpeg_ass)} detail={health?.ffmpeg_ass ? "FFmpeg + libass 준비됨" : "ffmpeg-full 필요"} />
             <RuntimeRow
-              label="로컬 번역"
+              label="AI 번역"
               ready={translatorReady}
-              detail={translatorReady ? `oMLX · ${shortModel(health?.translator.model)}` : "oMLX · 8000 포트 대기"}
+              detail={translatorReady ? `${translationProvider === "grok" ? "Grok" : "Codex"} OAuth 준비됨` : "OAuth 로그인 필요"}
             />
             {healthError ? (
               <button className="runtime-retry" onClick={onRefreshHealth}><RefreshCw size={13} /> 서버 다시 확인</button>
@@ -146,10 +154,21 @@ export function ProductionPanel({
                       </select>
                     </label>
                   </div>
+                  <label className="field" style={{ marginTop: 11 }}>
+                    <span>AI 번역 공급자</span>
+                    <select
+                      value={translationProvider}
+                      onChange={(event) => onTranslationProvider(event.currentTarget.value as "grok" | "codex")}
+                      disabled={active || !translationEnabled}
+                    >
+                      <option value="grok">Grok OAuth</option>
+                      <option value="codex">OpenAI Codex OAuth</option>
+                    </select>
+                  </label>
                   <label className="translation-switch-row">
                     <span>
                       <strong>번역 자막 추가</strong>
-                      <small>외국어 음성을 인식한 뒤 oMLX로 자연스럽게 번역합니다.</small>
+                      <small>선택한 Studio 전용 OAuth 세션으로 번역합니다.</small>
                     </span>
                     <input
                       type="checkbox"
@@ -159,7 +178,11 @@ export function ProductionPanel({
                     />
                   </label>
                   {translationEnabled && !translatorReady ? (
-                    <div className="translation-unavailable"><AlertTriangle size={13} /> oMLX를 127.0.0.1:8000에서 실행한 뒤 서버를 다시 확인하세요.</div>
+                    <div className="translation-unavailable">
+                      <AlertTriangle size={13} /> {providerAuth?.error ?? "선택한 공급자의 OAuth 로그인이 필요합니다."}
+                      <button className="text-button" onClick={onStartProviderLogin} disabled={active}>장치 로그인 시작</button>
+                      {providerAuth?.login?.instructions ? <pre>{providerAuth.login.instructions}</pre> : null}
+                    </div>
                   ) : null}
                   <p className="form-note">첫 실행은 모델을 내려받기 때문에 시간이 더 걸릴 수 있습니다. 결과는 현재 자막 목록을 교체하며, 불확실한 구간은 검토 대상으로 표시합니다.</p>
                 </div>
