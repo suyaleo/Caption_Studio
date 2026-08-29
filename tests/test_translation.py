@@ -1,4 +1,5 @@
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -9,6 +10,11 @@ from subtitle_automation.translation import TranslationClient, TranslationConfig
 class TranslationTests(unittest.TestCase):
     def setUp(self):
         self.commands: list[list[str]] = []
+        self._auth_directory = tempfile.TemporaryDirectory()
+        self.auth_root = Path(self._auth_directory.name) / "auth"
+
+    def tearDown(self):
+        self._auth_directory.cleanup()
 
     def _runner(self, command, _environment, _timeout):
         self.commands.append(command)
@@ -22,7 +28,7 @@ class TranslationTests(unittest.TestCase):
 
     @patch("subtitle_automation.translation.shutil.which", return_value="/usr/local/bin/provider")
     def test_grok_health_and_translation_use_isolated_cli(self, _which):
-        config = TranslationConfig(provider="grok", auth_root=Path("/data/auth"), batch_size=2, retries=1)
+        config = TranslationConfig(provider="grok", auth_root=self.auth_root, batch_size=2, retries=1)
         client = TranslationClient(config, runner=self._runner)
         self.assertTrue(client.health()["available"])
         translated, metadata = client.translate(["one", "two"], source_language="en", target_language="ko")
@@ -33,7 +39,7 @@ class TranslationTests(unittest.TestCase):
 
     @patch("subtitle_automation.translation.shutil.which", return_value="/usr/local/bin/provider")
     def test_codex_translation_uses_ephemeral_read_only_cli(self, _which):
-        config = TranslationConfig(provider="codex", auth_root=Path("/data/auth"), batch_size=2, retries=1)
+        config = TranslationConfig(provider="codex", auth_root=self.auth_root, batch_size=2, retries=1)
         client = TranslationClient(config, runner=self._runner)
         translated, metadata = client.translate(["one", "two"], source_language="en", target_language="ko")
         command = next(command for command in self.commands if command[:2] == ["codex", "exec"])
@@ -41,6 +47,15 @@ class TranslationTests(unittest.TestCase):
         self.assertEqual(metadata["provider"], "codex")
         self.assertIn("--ephemeral", command)
         self.assertIn("read-only", command)
+
+    @patch("subtitle_automation.translation.shutil.which", return_value="/usr/local/bin/provider")
+    def test_health_initializes_per_provider_auth_directories(self, _which):
+        with tempfile.TemporaryDirectory() as temporary:
+            auth_root = Path(temporary) / "auth"
+            for provider in ("grok", "codex"):
+                client = TranslationClient(TranslationConfig(provider=provider, auth_root=auth_root), runner=self._runner)
+                self.assertTrue(client.health()["available"])
+                self.assertTrue((auth_root / provider).is_dir())
 
     def test_caption_format_is_limited_to_two_lines(self):
         source = "이 문장은 화면 한 줄에 길어서 두 줄로 자연스럽게 나뉘어야 합니다"

@@ -47,10 +47,13 @@ class TranslationConfig:
 
 def provider_environment(provider: str, auth_root: Path) -> dict[str, str]:
     environment = dict(os.environ)
+    credential_root = auth_root / provider
+    if provider in SUPPORTED_PROVIDERS:
+        credential_root.mkdir(parents=True, exist_ok=True)
     if provider == "grok":
-        environment["HOME"] = str(auth_root / "grok")
+        environment["HOME"] = str(credential_root)
     elif provider == "codex":
-        environment["CODEX_HOME"] = str(auth_root / "codex")
+        environment["CODEX_HOME"] = str(credential_root)
     return environment
 
 
