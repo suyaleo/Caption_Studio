@@ -29,6 +29,9 @@ class TranslationTests(unittest.TestCase):
     @patch("subtitle_automation.translation.shutil.which", return_value="/usr/local/bin/provider")
     def test_grok_health_and_translation_use_isolated_cli(self, _which):
         config = TranslationConfig(provider="grok", auth_root=self.auth_root, batch_size=2, retries=1)
+        credential = self.auth_root / "grok" / ".grok" / "auth.json"
+        credential.parent.mkdir(parents=True)
+        credential.write_text("{}", encoding="utf-8")
         client = TranslationClient(config, runner=self._runner)
         self.assertTrue(client.health()["available"])
         translated, metadata = client.translate(["one", "two"], source_language="en", target_language="ko")
@@ -52,10 +55,13 @@ class TranslationTests(unittest.TestCase):
     def test_health_initializes_per_provider_auth_directories(self, _which):
         with tempfile.TemporaryDirectory() as temporary:
             auth_root = Path(temporary) / "auth"
-            for provider in ("grok", "codex"):
-                client = TranslationClient(TranslationConfig(provider=provider, auth_root=auth_root), runner=self._runner)
-                self.assertTrue(client.health()["available"])
-                self.assertTrue((auth_root / provider).is_dir())
+            grok = TranslationClient(TranslationConfig(provider="grok", auth_root=auth_root), runner=self._runner)
+            grok_status = grok.health()
+            self.assertFalse(grok_status["available"])
+            self.assertTrue((auth_root / "grok").is_dir())
+            codex = TranslationClient(TranslationConfig(provider="codex", auth_root=auth_root), runner=self._runner)
+            self.assertTrue(codex.health()["available"])
+            self.assertTrue((auth_root / "codex").is_dir())
 
     def test_caption_format_is_limited_to_two_lines(self):
         source = "이 문장은 화면 한 줄에 길어서 두 줄로 자연스럽게 나뉘어야 합니다"

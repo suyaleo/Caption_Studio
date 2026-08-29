@@ -76,6 +76,9 @@ class TranslationClient:
         binary = "grok" if provider == "grok" else "codex"
         if not shutil.which(binary):
             return _health(provider, False, f"{binary} CLI가 컨테이너에 없습니다.", self.config.model)
+        if provider == "grok" and not (self.config.auth_root / "grok" / ".grok" / "auth.json").is_file():
+            provider_environment(provider, self.config.auth_root)
+            return _health(provider, False, "Grok OAuth 로그인이 필요합니다.", self.config.model)
         try:
             result = self._runner(
                 ["grok", "models"] if provider == "grok" else ["codex", "login", "status"],
