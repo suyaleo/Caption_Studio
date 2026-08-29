@@ -611,6 +611,15 @@ textarea:focus-visible {
 .runtime-row strong { font-size: 10px; font-weight: 700; }
 .runtime-row small { justify-self: end; color: var(--faint); font-size: 9px; }
 .runtime-retry { display: flex; align-items: center; gap: 5px; margin: 8px 0 0 18px; padding: 0; border: 0; color: var(--accent); background: transparent; cursor: pointer; font-size: 9px; }
+.oauth-access { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px 10px; margin: 10px 0 0 18px; padding: 10px; border: 1px solid #40382f; border-radius: 6px; background: #1b1e20; }
+.oauth-access > div { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.oauth-access strong { color: #d8d7d3; font-size: 10px; }
+.oauth-access small, .oauth-access p { margin: 0; color: var(--faint); font-size: 8px; line-height: 1.45; }
+.oauth-access label { display: flex; align-items: center; gap: 6px; grid-column: 1 / -1; color: var(--faint); font-size: 8px; }
+.oauth-access select { min-width: 0; flex: 1; height: 28px; padding: 0 8px; border: 1px solid var(--border); border-radius: 5px; color: var(--text); background: var(--raised); font-size: 10px; }
+.oauth-access .oauth-login { align-self: start; margin-top: 2px; }
+.oauth-access p { grid-column: 1 / -1; color: #d9a27d; }
+.oauth-access pre { max-height: 96px; grid-column: 1 / -1; overflow: auto; margin: 0; padding: 8px; border: 1px solid #40382f; border-radius: 5px; color: #d8d7d3; background: #151719; font: 8px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; white-space: pre-wrap; }
 
 .production-empty {
   display: flex;
