@@ -41,7 +41,7 @@
 - 폰트, 크기, 색상, 외곽선, 배경, 정렬과 화면 위치 조정
 - macOS Apple Silicon의 `mlx-whisper` 자동 자막
 - Docker/Linux CPU의 `faster-whisper` 자동 자막
-- 원본 언어 자동 감지와 OpenAI-compatible 로컬 모델 번역
+- 원본 언어 자동 감지와 Studio별 Grok 또는 OpenAI Codex OAuth 번역
 - 한국어·영어·일본어·중국어·스페인어·프랑스어·독일어·러시아어
 - ASS 스타일 보존과 FFmpeg 하드서브 MP4 렌더링
 - 작업 진행률, 검토 필요 구간, 오류와 결과 다운로드 제공
@@ -56,9 +56,8 @@
 ```bash
 docker run --rm \
   --name caption-studio \
-  -p 8788:8788 \
-  -v caption-studio-data:/data \
-  --add-host host.docker.internal:host-gateway \
+  -p 127.0.0.1:8768:8788 \
+  -v /srv/leostudio/data/caption-studio:/data \
   ghcr.io/suyaleo/caption-studio:latest
 ```
 
@@ -74,12 +73,7 @@ docker compose up --build
 
 Docker 버전은 FFmpeg, libass, Noto CJK 폰트와 `faster-whisper` CPU 런타임을 포함합니다. Whisper 모델은 처음 자동 자막을 실행할 때 `/data/models`에 내려받으며, 업로드·작업·출력 파일도 `/data` 볼륨에 보존됩니다.
 
-번역까지 사용하려면 호스트의 OpenAI-compatible 서버를 연결합니다.
-
-```bash
-CAPTION_TRANSLATION_BASE_URL=http://host.docker.internal:8000/v1 \
-docker compose up
-```
+번역은 제작 센터에서 Grok OAuth 또는 OpenAI Codex OAuth를 선택한 뒤, 해당 Studio의 장치 로그인을 완료하면 사용할 수 있습니다. 자격증명은 `/data/auth`에만 보관되며 호스트 CLI 자격증명을 공유하지 않습니다.
 
 ## macOS 격리 설치
 
@@ -133,7 +127,7 @@ Browser :8788
   └─ /api
        ├─ media upload and persistent jobs
        ├─ mlx-whisper (macOS) / faster-whisper (Docker)
-       ├─ OpenAI-compatible translation (optional)
+       ├─ Grok or Codex CLI OAuth translation (optional)
        └─ FFmpeg + libass MP4 rendering
 ```
 
@@ -155,11 +149,12 @@ Browser :8788
 | `CAPTION_ASR_PROVIDER` | `auto` / Docker는 `faster-whisper` | ASR 제공자 |
 | `CAPTION_ASR_COMPUTE_TYPE` | `int8` | Docker CPU 추론 정밀도 |
 | `CAPTION_ASR_DOWNLOAD_ROOT` | `/data/models` | 모델 캐시 |
-| `CAPTION_TRANSLATION_BASE_URL` | Docker에서 `host.docker.internal:8000/v1` | 번역 서버 |
-| `CAPTION_TRANSLATION_MODEL` | 비어 있음 | 생략 시 첫 로드 모델 선택 |
+| `CAPTION_TRANSLATION_PROVIDER` | `none` | Docker 기본 공급자. UI에서는 Grok 또는 Codex를 선택 |
+| `CAPTION_TRANSLATION_AUTH_ROOT` | `/data/auth` | Studio 전용 OAuth 자격증명 위치 |
+| `CAPTION_TRANSLATION_MODEL` | 비어 있음 | 선택한 CLI에 전달할 모델 ID (선택) |
 | `CAPTION_STUDIO_MAX_UPLOAD_BYTES` | `4294967296` | 최대 업로드 크기 |
 
-번역 서버가 없어도 편집·자동 자막·영상 출력은 동작하며, 번역 UI만 명확히 비활성화됩니다.
+OAuth 로그인이 없어도 편집·자동 자막·영상 출력은 동작하며, 번역 UI만 명확히 비활성화됩니다.
 
 ## 검증
 

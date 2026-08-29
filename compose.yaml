@@ -7,7 +7,7 @@ services:
         VCS_REF: ${VCS_REF:-local}
     image: ghcr.io/suyaleo/caption-studio:${IMAGE_TAG:-local}
     ports:
-      - "${CAPTION_STUDIO_PORT:-8788}:8788"
+      - "127.0.0.1:${CAPTION_STUDIO_PORT:-8768}:8788"
     environment:
       CAPTION_STUDIO_WORKSPACE: /data/workspace
       CAPTION_STUDIO_MAX_UPLOAD_BYTES: ${CAPTION_STUDIO_MAX_UPLOAD_BYTES:-4294967296}
@@ -16,14 +16,10 @@ services:
       CAPTION_ASR_COMPUTE_TYPE: ${CAPTION_ASR_COMPUTE_TYPE:-int8}
       CAPTION_ASR_DOWNLOAD_ROOT: /data/models
       CAPTION_ASR_BEAM_SIZE: ${CAPTION_ASR_BEAM_SIZE:-5}
-      CAPTION_TRANSLATION_BASE_URL: ${CAPTION_TRANSLATION_BASE_URL:-http://host.docker.internal:8000/v1}
-      CAPTION_TRANSLATION_API_KEY: ${CAPTION_TRANSLATION_API_KEY:-local}
+      CAPTION_TRANSLATION_PROVIDER: ${CAPTION_TRANSLATION_PROVIDER:-none}
+      CAPTION_TRANSLATION_AUTH_ROOT: /data/auth
       CAPTION_TRANSLATION_MODEL: ${CAPTION_TRANSLATION_MODEL:-}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    user: "${STUDIO_UID:-1000}:${STUDIO_GID:-1000}"
     volumes:
-      - caption-studio-data:/data
+      - ${CAPTION_STUDIO_DATA_DIR:-/srv/leostudio/data/caption-studio}:/data
     restart: unless-stopped
-
-volumes:
-  caption-studio-data:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 import threading
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -13,7 +14,8 @@ from typing import Any
 from .media_input import asr_provider_status, build_input_job_from_asr, extract_audio, normalize_asr_model, probe_media, transcribe_audio
 from .rendering import render_hardsub_video, resolve_ffmpeg_tools
 from .runner import run_complete_job
-from .translation import translate_caption_texts, translation_health
+from .oauth import OAuthLoginManager
+from .translation import TranslationConfig, translate_caption_texts, translation_health
 
 
 class WebJobManager:
@@ -28,6 +30,7 @@ class WebJobManager:
         self._jobs: dict[str, dict[str, Any]] = {}
         self._lock = threading.Lock()
         self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix="caption-studio")
+        self.oauth = OAuthLoginManager()
 
     def health(self) -> dict[str, Any]:
         ffmpeg, ffprobe, supports_ass = resolve_ffmpeg_tools()
@@ -43,6 +46,12 @@ class WebJobManager:
             "translator": translator,
             "workspace": str(self.root),
         }
+
+    def oauth_status(self, provider: str) -> dict[str, Any]:
+        return self.oauth.status(provider)
+
+    def start_oauth_login(self, provider: str) -> dict[str, Any]:
+        return self.oauth.start(provider)
 
     def create_media(self, filename: str, source_stream: Any, content_length: int) -> dict[str, Any]:
         safe_name = _safe_media_name(filename)
@@ -76,6 +85,7 @@ class WebJobManager:
         source_language: str,
         translate: bool = False,
         target_language: str = "ko",
+        translation_provider: str = "none",
     ) -> dict[str, Any]:
         media = self._media(media_id)
         job = self._create_job("transcribe", media_id)
@@ -87,6 +97,7 @@ class WebJobManager:
             source_language,
             translate,
             target_language,
+            translation_provider,
         )
         return job
 
@@ -132,6 +143,7 @@ class WebJobManager:
         source_language: str,
         translate: bool,
         target_language: str,
+        translation_provider: str,
     ) -> None:
         asr_model = normalize_asr_model(asr_model)
         job_dir = self.jobs_root / job_id
@@ -189,12 +201,13 @@ class WebJobManager:
             ]
             translation: dict[str, Any] | None = None
             if translate and captions:
-                self._update(job_id, progress=82, phase="translate", message="oMLX로 자막을 번역하는 중")
+                self._update(job_id, progress=82, phase="translate", message=f"{translation_provider.title()}로 자막을 번역하는 중")
                 source_texts = [str(caption["text"]) for caption in captions]
                 translated_texts, translation = translate_caption_texts(
                     source_texts,
                     source_language=detected_language,
                     target_language=target_language,
+                    config=replace(TranslationConfig.from_env(), provider=translation_provider),
                     on_progress=lambda _batch, message: self._update(
                         job_id,
                         progress=88,
@@ -207,7 +220,7 @@ class WebJobManager:
                     caption["sourceLanguage"] = detected_language
                     caption["targetLanguage"] = target_language
                     caption["text"] = translated_text
-                    caption["flags"] = [*caption.get("flags", []), "translated_local"]
+                    caption["flags"] = [*caption.get("flags", []), f"translated_{translation_provider}"]
             self._update(
                 job_id,
                 status="complete",

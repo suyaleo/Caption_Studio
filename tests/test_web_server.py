@@ -56,7 +56,7 @@ class WebServerTests(unittest.TestCase):
         self.assertIn("asr", health)
         self.assertIn("translator", health)
         self.assertEqual(health["version"], "0.5.1")
-        self.assertEqual(health["translator"]["base_url"], "http://127.0.0.1:8000/v1")
+        self.assertEqual(health["translator"]["provider"], "none")
 
         payload = b"fake-video-evidence"
         self.connection.request("POST", "/api/media?filename=sample.mp4", body=payload)
