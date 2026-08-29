@@ -11,13 +11,14 @@ Deploy Caption Studio on the Ubuntu development and deployment host with Studio-
   - Grok: no plan, no subagents, no web search.
   - Codex: ephemeral, read-only, no repository rules.
 - Each provider receives an isolated credential home under the Caption Studio data mount. The container never reads or mounts the Ubuntu user's ~/.grok or ~/.codex.
+- The production panel always exposes a Grok/Codex provider dropdown and device-login control, even before a video is selected or translation is enabled. Grok is marked ready only when this Studio's own credential file exists; listing models alone is not authentication.
 - Added Tailnet-safe compose defaults: 127.0.0.1:8768, /srv/leostudio/data/caption-studio, and caller UID/GID.
 - Added a Caption Studio-only Ubuntu self-hosted GitHub Actions runner with the caption-studio label.
 - CI now requires that self-hosted runner.
 
 ## Verification completed
 
-- Python unit suite: 35 passed, 1 skipped.
+- Python unit suite: 36 passed, 1 skipped.
 - Web type check, unit tests, and production build: passed.
 - Docker image: built successfully; bundled Codex 0.151.0, Grok 1.0.13, and Python 3.11 executed.
 - Docker persistent upload and hard-sub render smoke test: passed.

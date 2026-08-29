@@ -110,6 +110,28 @@ export function ProductionPanel({
               ready={translatorReady}
               detail={translatorReady ? `${translationProvider === "grok" ? "Grok" : "Codex"} OAuth 준비됨` : "OAuth 로그인 필요"}
             />
+            <section className="oauth-access" aria-label="AI 번역 OAuth 로그인">
+              <div>
+                <strong>AI 번역 OAuth</strong>
+                <small>이 Studio에만 저장됩니다.</small>
+              </div>
+              <label>
+                <span>공급자</span>
+                <select
+                  value={translationProvider}
+                  onChange={(event) => onTranslationProvider(event.currentTarget.value as "grok" | "codex")}
+                  disabled={active}
+                >
+                  <option value="grok">Grok OAuth</option>
+                  <option value="codex">OpenAI Codex OAuth</option>
+                </select>
+              </label>
+              <button className="text-button oauth-login" onClick={onStartProviderLogin} disabled={active}>
+                {translatorReady ? "다시 로그인" : "장치 로그인 시작"}
+              </button>
+              {!translatorReady ? <p>{providerAuth?.error ?? "선택한 공급자의 OAuth 로그인이 필요합니다."}</p> : null}
+              {providerAuth?.login?.instructions ? <pre>{providerAuth.login.instructions}</pre> : null}
+            </section>
             {healthError ? (
               <button className="runtime-retry" onClick={onRefreshHealth}><RefreshCw size={13} /> 서버 다시 확인</button>
             ) : null}
@@ -154,17 +176,6 @@ export function ProductionPanel({
                       </select>
                     </label>
                   </div>
-                  <label className="field" style={{ marginTop: 11 }}>
-                    <span>AI 번역 공급자</span>
-                    <select
-                      value={translationProvider}
-                      onChange={(event) => onTranslationProvider(event.currentTarget.value as "grok" | "codex")}
-                      disabled={active || !translationEnabled}
-                    >
-                      <option value="grok">Grok OAuth</option>
-                      <option value="codex">OpenAI Codex OAuth</option>
-                    </select>
-                  </label>
                   <label className="translation-switch-row">
                     <span>
                       <strong>번역 자막 추가</strong>
@@ -179,9 +190,7 @@ export function ProductionPanel({
                   </label>
                   {translationEnabled && !translatorReady ? (
                     <div className="translation-unavailable">
-                      <AlertTriangle size={13} /> {providerAuth?.error ?? "선택한 공급자의 OAuth 로그인이 필요합니다."}
-                      <button className="text-button" onClick={onStartProviderLogin} disabled={active}>장치 로그인 시작</button>
-                      {providerAuth?.login?.instructions ? <pre>{providerAuth.login.instructions}</pre> : null}
+                      <AlertTriangle size={13} /> {providerAuth?.error ?? "선택한 공급자의 OAuth 로그인이 필요합니다."} 상단 OAuth 영역에서 장치 로그인을 시작하세요.
                     </div>
                   ) : null}
                   <p className="form-note">첫 실행은 모델을 내려받기 때문에 시간이 더 걸릴 수 있습니다. 결과는 현재 자막 목록을 교체하며, 불확실한 구간은 검토 대상으로 표시합니다.</p>
