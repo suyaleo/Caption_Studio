@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1.7
-FROM node:22.23.2-alpine AS web-builder
+FROM node:26.8.1-alpine AS web-builder
 WORKDIR /build/web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci
 COPY web/ ./
 RUN npm run build
 
-FROM node:22.23.2-bookworm-slim AS runtime
+FROM node:26.8.1-bookworm-slim AS runtime
 ARG APP_VERSION=0.5.1
 ARG VCS_REF=unknown
 LABEL org.opencontainers.image.title="Caption Studio" \
