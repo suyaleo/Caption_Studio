@@ -21,6 +21,7 @@ class CliTests(unittest.TestCase):
             cues_path = tmp / "cues.json"
             qa_path = tmp / "qa.json"
             srt_path = tmp / "demo.srt"
+            ass_path = tmp / "demo.ass"
             job_path.write_text(
                 json.dumps(
                     {
@@ -53,14 +54,18 @@ class CliTests(unittest.TestCase):
             self._run(["segment-local", "--input", str(job_path), "--output", str(cues_path)], env)
             self._run(["validate", "--input", str(cues_path), "--policies", str(job_path), "--output", str(qa_path)], env)
             self._run(["format-srt", "--input", str(cues_path), "--output", str(srt_path)], env)
+            self._run(["format-ass", "--input", str(cues_path), "--output", str(ass_path)], env)
 
             cues = json.loads(cues_path.read_text(encoding="utf-8"))
             qa = json.loads(qa_path.read_text(encoding="utf-8"))
             srt = srt_path.read_text(encoding="utf-8")
+            ass = ass_path.read_text(encoding="utf-8")
             self.assertEqual(cues["stage"], "subtitle_segmentation")
             self.assertTrue(qa["passed"])
             self.assertIn("00:00:00,000 --> 00:00:02,200", srt)
             self.assertIn("안녕하세요 여러분", srt)
+            self.assertIn("[Script Info]", ass)
+            self.assertIn("Dialogue: 0,", ass)
 
     def test_cli_llm_stage_writes_raw_response_and_fallback_result(self):
         from subtitle_automation import cli

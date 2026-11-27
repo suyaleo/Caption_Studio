@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from .formats import cues_to_srt, cues_to_vtt
+from .formats import cues_to_ass, cues_to_srt, cues_to_vtt
 from .llm_pipeline import run_stage_with_local_llm
 from .local_llm import LocalLLMClient
 from .media_input import prepare_media_input_job
@@ -86,6 +86,14 @@ def main(argv: list[str] | None = None) -> int:
     vtt_parser.add_argument("--input", required=True, type=Path)
     vtt_parser.add_argument("--output", type=Path)
     vtt_parser.set_defaults(handler=_format_vtt)
+
+    ass_parser = subparsers.add_parser(
+        "format-ass",
+        help="Serialize subtitle cue JSON as ASS (Advanced SubStation Alpha).",
+    )
+    ass_parser.add_argument("--input", required=True, type=Path)
+    ass_parser.add_argument("--output", type=Path)
+    ass_parser.set_defaults(handler=_format_ass)
 
     args = parser.parse_args(argv)
     try:
@@ -211,6 +219,11 @@ def _format_srt(args: argparse.Namespace) -> None:
 def _format_vtt(args: argparse.Namespace) -> None:
     data = _read_json(args.input)
     _write_text_or_stdout(cues_to_vtt(_extract_cues(data)), args.output)
+
+
+def _format_ass(args: argparse.Namespace) -> None:
+    data = _read_json(args.input)
+    _write_text_or_stdout(cues_to_ass(_extract_cues(data)), args.output)
 
 
 def _extract_cues(data: dict[str, Any]) -> list[dict[str, Any]]:
