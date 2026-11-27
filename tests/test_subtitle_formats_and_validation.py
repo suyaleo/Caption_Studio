@@ -5,11 +5,19 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from subtitle_automation.formats import cues_to_srt, cues_to_vtt
+from subtitle_automation.formats import cues_to_ass, cues_to_srt, cues_to_vtt
 from subtitle_automation.validation import validate_subtitle_job
 
 
 class SubtitleFormatAndValidationTests(unittest.TestCase):
+    def test_cues_to_ass_serializes_header_timestamps_and_multiline_text(self):
+        ass = cues_to_ass([{"start_ms": 1200, "end_ms": 2450, "lines": ["첫 줄", "둘째 줄"]}])
+        self.assertIn("[Script Info]", ass)
+        self.assertIn("ScriptType: v4.00+", ass)
+        self.assertIn("[V4+ Styles]", ass)
+        self.assertIn("[Events]", ass)
+        self.assertIn("Dialogue: 0,0:00:01.20,0:00:02.45,Caption1,,0,0,0,,첫 줄\\N둘째 줄", ass)
+
     def test_formatters_emit_valid_srt_and_webvtt(self):
         cues = [
             {

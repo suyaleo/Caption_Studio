@@ -36,6 +36,20 @@ def cues_to_vtt(cues: Iterable[dict]) -> str:
     return "\n\n".join(blocks) + "\n"
 
 
+def cues_to_ass(cues: Iterable[dict]) -> str:
+    from .rendering import captions_to_ass
+
+    captions = [
+        {
+            "start": cue["start_ms"] / 1000,
+            "end": cue["end_ms"] / 1000,
+            "text": "\n".join(_lines(cue)),
+        }
+        for cue in cues
+    ]
+    return captions_to_ass(captions)
+
+
 def format_timestamp(milliseconds: int, separator: str) -> str:
     if milliseconds < 0:
         raise ValueError("timestamp cannot be negative")

@@ -16,6 +16,7 @@ interface ToolbarProps {
   onSaveProject: () => void;
   onExportSrt: () => void;
   onExportVtt: () => void;
+  onExportAss: () => void;
   onOpenProduction: (mode: "transcribe" | "render") => void;
 }
 
@@ -26,6 +27,7 @@ export function Toolbar({
   onSaveProject,
   onExportSrt,
   onExportVtt,
+  onExportAss,
   onOpenProduction,
 }: ToolbarProps) {
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -95,6 +97,7 @@ export function Toolbar({
             SRT 내보내기
           </button>
           <button className="button export-secondary" onClick={onExportVtt}>VTT</button>
+          <button className="button export-secondary" onClick={onExportAss}>ASS</button>
         </div>
       </div>
 

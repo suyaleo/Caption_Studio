@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { captionsToSrt, captionsToVtt, parseCaptionText } from "./formats";
+import { captionsToAss, captionsToSrt, captionsToVtt, parseCaptionText } from "./formats";
+import { DEFAULT_STYLE } from "./types";
 
 describe("caption formats", () => {
   it("parses SRT and keeps multiline caption text", () => {
@@ -21,5 +22,15 @@ describe("caption formats", () => {
     const output = captionsToVtt([{ id: "one", start: 0, end: 1.2, text: "시작" }]);
     expect(output).toContain("WEBVTT");
     expect(output).toContain("00:00:00.000 --> 00:00:01.200");
+  });
+
+  it("serializes ASS with style colours and multiline centisecond timing", () => {
+    const output = captionsToAss(
+      [{ id: "one", start: 1.2, end: 2.5, text: "첫 줄\n둘째 줄" }],
+      DEFAULT_STYLE,
+    );
+    expect(output).toContain("[Script Info]\nScriptType: v4.00+\nPlayResX: 1920\nPlayResY: 1080");
+    expect(output).toContain("Style: Caption1,Apple SD Gothic Neo,48,&H00FFFFFF");
+    expect(output).toContain("Dialogue: 0,0:00:01.20,0:00:02.50,Caption1,,0,0,0,,첫 줄\\N둘째 줄");
   });
 });

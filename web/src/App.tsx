@@ -7,6 +7,7 @@ import { Timeline } from "./components/Timeline";
 import { Toolbar } from "./components/Toolbar";
 import {
   captionsToSrt,
+  captionsToAss,
   captionsToVtt,
   downloadText,
   parseCaptionText,
@@ -172,6 +173,7 @@ export function App() {
         onSaveProject={saveProject}
         onExportSrt={() => downloadText(`${editor.projectName}.srt`, captionsToSrt(editor.captions), "application/x-subrip")}
         onExportVtt={() => downloadText(`${editor.projectName}.vtt`, captionsToVtt(editor.captions), "text/vtt")}
+        onExportAss={() => downloadText(`${editor.projectName}.ass`, captionsToAss(editor.captions, editor.globalStyle), "text/x-ssa")}
         onOpenProduction={production.show}
       />
 
